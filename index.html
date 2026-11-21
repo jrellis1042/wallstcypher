@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wall St. Cypher — A Gift for Tye</title>
+<meta name="description" content="Wall St. Cypher: a stock trading game that runs the whole history of hip-hop — from the Bronx in 1973 to today — for kids and adults. Practice funds only — no real money, ever.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=DM+Sans:opsz,wght@9..40,400;9..40,600;9..40,800&family=Permanent+Marker&family=Rubik+Spray+Paint&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ================= FRONT DOOR ================= -->
+<div class="door" id="screen-door">
+  <div class="door-top">
+    <div class="logo">WALL ST. <span>CYPHER</span> 📻</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div class="pill">Ages 4+ · No real money</div>
+      <button type="button" class="icon-btn" id="btn-owner-door" style="background:var(--coal);color:var(--gold)">🔐 Owners</button>
+    </div>
+  </div>
+  <div class="marquee" aria-hidden="true"><div>WALL STREET CYPHER ★ FRESH SINCE '73 ★ ROCK THE CHARTS ★ BUILD THE BAG ★ KNOW YOUR HISTORY ★ YES YES Y'ALL ★ WALL STREET CYPHER ★ FRESH SINCE '73 ★ ROCK THE CHARTS ★ BUILD THE BAG ★ KNOW YOUR HISTORY ★ YES YES Y'ALL ★&nbsp;</div></div>
+  <div class="flyer-stripes" aria-hidden="true"></div>
+
+  <section class="hero">
+    <div>
+      <span class="gift-ribbon">🎁 A GIFT FOR TYE</span>
+      <h1>Stocks<br>&amp; <span class="hl">Bars</span></h1>
+      <p class="marker" style="color:var(--pink);font-size:19px;margin:12px 0 0">Made for Mom, with love — from Rashad.</p>
+      <p class="lede">Trading isn't just for suits on TV — <b>it's for us, too</b>. This game makes the market feel close, plain, and within reach: real investing — stocks, charts, dividends, risk — level by level, in our language, with our history riding on every stage. You will take losses here. Every real trader does. You will also learn exactly how they bounce back — until beating a chart feels like something you can actually do. Because you can.</p>
+      <div class="gift-note">
+        <span class="marker">A note with the gift —</span>
+        <p style="margin:6px 0 0">Mom, this one is yours. Two hundred levels, our history on every stage, and a Live Desk with real market prices waiting at the top. Play it loud, learn it deep, and pass it on to the grandkids. Love always.</p>
+      </div>
+      <div class="stats">
+        <div class="stat"><b>200</b><span>Unique levels</span></div>
+        <div class="stat"><b>40</b><span>Boss battles</span></div>
+        <div class="stat"><b>8</b><span>Gateways</span></div>
+        <div class="stat"><b>$0</b><span>Real money</span></div>
+      </div>
+      <p><span class="marker" style="color:var(--pink);font-size:18px">How it unlocks:</span><br>
+      Levels <b>1–25</b> are Act I — The Beginning. Finish 25 and the gate swings open to <b>75 more levels</b> (26–100) — Act II, The Golden Age. Clear level <b>100</b> and a second gate drops <b>100 legacy levels</b> (101–200) — Act III, The Modern Era. Every 5th level is a boss. Clear <b>all 200</b> and earn the <b>Trader Ready</b> certification. The <b>Live Desk</b> — real market prices — opens at level 25. Practice funds only, always.</p>
+    </div>
+
+    <div class="card" aria-label="Profile front door">
+      <div class="tabs" role="group" aria-label="Create or log in">
+        <button type="button" id="tab-create" aria-pressed="true">🎤 Create Profile</button>
+        <button type="button" id="tab-login" aria-pressed="false">🔑 Log In</button>
+      </div>
+
+      <form id="form-create" novalidate>
+        <h2>Drop your name</h2>
+        <p class="sub">Pick a stage name — no real names, no birthdays. Your profile sets your difficulty; you can run it back with a new profile any time.</p>
+        <label for="f-name">Stage name</label>
+        <input type="text" id="f-name" maxlength="20" placeholder="e.g. Juice Jr" autocomplete="off">
+        <label for="f-user">Username</label>
+        <input type="text" id="f-user" maxlength="20" placeholder="letters, numbers and _ only" autocomplete="off">
+        <label for="f-pin">4-digit game PIN</label>
+        <input type="password" id="f-pin" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
+        <label>Difficulty tier</label>
+        <div class="seg" id="tier-seg" style="grid-template-columns:1fr 1fr">
+          <button type="button" data-tier="Little Legends" aria-pressed="true">🌟 Little Legends<br><small>Ages 4–7</small></button>
+          <button type="button" data-tier="Rookie" aria-pressed="false">🎤 Rookie</button>
+          <button type="button" data-tier="Rookie · Kid Mode" aria-pressed="false">🧒 Rookie · Kid Mode</button>
+          <button type="button" data-tier="Teen Trader" aria-pressed="false">🔥 Teen Trader</button>
+          <button type="button" data-tier="Adult Trader" aria-pressed="false">💼 Adult Trader</button>
+        </div>
+        <p class="fineprint" id="tier-note">Little Legends: big buttons, simple words, gentle charts — tuned for a 7-year-old and a 4-year-old learning together.</p>
+        <button type="submit" class="btn">Start the Cypher →</button>
+        <div class="err" id="err-create"></div>
+        <p class="fineprint">Practice funds only. No real money, no broker, no bank — ever.</p>
+      </form>
+
+      <form id="form-login" novalidate class="hidden">
+        <h2>Welcome back</h2>
+        <p class="sub">Your username + 4-digit game PIN bring your progress back.</p>
+        <label for="l-user">Username</label>
+        <input type="text" id="l-user" maxlength="20" autocomplete="off">
+        <label for="l-pin">4-digit game PIN</label>
+        <input type="password" id="l-pin" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
+        <button type="submit" class="btn dark">Log In →</button>
+        <div class="err" id="err-login"></div>
+      </form>
+    </div>
+  </section>
+
+  <section class="how">
+    <article><span class="tag">Learn the game</span><h3>200 levels, our history</h3><p>Every level teaches one trading idea and one true story from Black American history — Greenwood, Madam C.J. Walker, Maggie Lena Walker, DJ Kool Herc, and more, from the Bronx in 1973 to today.</p></article>
+    <article><span class="tag">Trade for real (practice)</span><h3>Trade Floor &amp; Live Desk</h3><p>The Trade Floor runs on clearly-labeled simulated practice prices. The Live Desk, open from level 25, trades real market prices — honestly labeled, never faked.</p></article>
+    <article><span class="tag">Earn the title</span><h3>Trader Ready</h3><p>Finish all 200 levels and prove six trading skills — market order, filled limit, stop-loss, take-profit, 3+ tickers at once, a profitable close.</p></article>
+  </section>
+  <footer>Wall St. Cypher — a gift for Tye. Practice funds only. No real money, no broker, no bank. Hip-hop culture from the Bronx in 1973 to today, and Black American history throughout.</footer>
+</div>
+
+<!-- ================= START SCREEN ================= -->
+<div id="screen-start">
+  <div class="wrap">
+    <div class="start-hero">
+      <span class="gift-ribbon">🎁 A GIFT FOR TYE</span>
+      <h1 id="start-title">You're in!</h1>
+      <p class="marker" style="color:var(--pink);font-size:19px" id="start-sub">The cypher is yours. Let's run it.</p>
+      <div class="chips" id="start-chips"></div>
+      <p><button type="button" class="btn" id="btn-start-game" style="max-width:420px;font-size:20px;padding:18px 30px">▶ START GAME</button></p>
+      <p><button type="button" class="btn ghost" id="btn-change-tier" style="max-width:420px">Change difficulty tier</button></p>
+      <p class="small">Practice funds only — your wallet holds practice dollars, never real money.</p>
+      <p><button type="button" class="backlink" id="btn-signout-start">Sign out</button></p>
+    </div>
+  </div>
+</div>
+
+<!-- ================= APP SHELL ================= -->
+<div id="screen-app">
+  <div class="topbar"><div class="topbar-in">
+    <div class="logo">WALL ST. <span>CYPHER</span></div>
+    <div class="hud" id="hud-chips"></div>
+    <div class="spacer"></div>
+    <button type="button" class="icon-btn" id="btn-owner-app">🔐 Owners</button>
+    <button type="button" class="icon-btn" id="btn-signout">Sign out</button>
+  </div></div>
+
+  <div class="wrap">
+    <div class="profile-strip">
+      <div class="face" id="pf-face">🎤</div>
+      <div style="flex:1;min-width:180px">
+        <h2 id="pf-name">—</h2>
+        <p id="pf-tier">—</p>
+        <div class="progress" style="margin-top:8px"><i id="pf-progress" style="width:0%"></i></div>
+      </div>
+      <div class="wallet-mini">
+        <span>Practice wallet</span>
+        <b id="pf-balance">$0.00</b>
+        <small id="pf-account">Account value —</small>
+        <button type="button" id="btn-wallet-jump">Add / take out practice funds</button>
+      </div>
+    </div>
+
+    <div class="app-tabs" role="group" aria-label="Game tabs">
+      <button type="button" data-tab="map" aria-pressed="true">🗺️ Level Map</button>
+      <button type="button" data-tab="tradefloor" aria-pressed="false">📻 Trade Floor</button>
+      <button type="button" data-tab="livedesk" aria-pressed="false">📈 Live Desk <span class="badge" id="live-badge">Locked</span></button>
+      <button type="button" data-tab="wallet" aria-pressed="false">💰 Wallet</button>
+      <button type="button" data-tab="awards" aria-pressed="false">🏆 Awards</button>
+    </div>
+
+    <!-- LEVEL MAP -->
+    <section class="panel screen show" id="tab-map">
+      <h2>Level Map</h2>
+      <p class="sub">200 levels, 3 acts — the whole history of hip-hop, from the Bronx in 1973 to today. Finish a level to unlock the next one — the server keeps the order, no skipping.</p>
+      <div class="gate-row" id="gateway-row"></div>
+      <div id="acts"></div>
+    </section>
+
+    <!-- TRADE FLOOR -->
+    <section class="panel screen" id="tab-tradefloor">
+      <h2>Trade Floor <span class="live-badge" style="background:var(--teal)">Practice</span></h2>
+      <div id="sotw" class="sotw"></div>
+      <div class="feed-banner sim" id="sim-banner">SIMULATED PRACTICE — these prices are made up for learning, not real market data.</div>
+      <p class="sub">Sixteen of the game's own companies. Prices change once a day. Buy low, sell high — with practice funds only.</p>
+      <div class="trade-grid" id="sim-grid"></div>
+      <div id="sim-detail" class="hidden">
+        <h3 id="sim-detail-name">—</h3>
+        <canvas class="chart-lg" id="sim-chart" width="900" height="260"></canvas>
+        <div class="portfolio" id="sim-detail-stats"></div>
+        <div class="controls">
+          <div class="qty"><button type="button" id="sim-qty-minus">−</button><b id="sim-qty">1</b><button type="button" id="sim-qty-plus">+</button></div>
+          <button type="button" class="btn" id="sim-buy">Buy</button>
+          <button type="button" class="btn dark" id="sim-sell">Sell</button>
+          <button type="button" class="btn ghost" id="sim-stop">Set a stop price</button>
+        </div>
+        <p class="small">Max 10 shares per trade. A stop price keeps your risk inside the 2% rule — the server checks every trade.</p>
+        <div class="msg" id="sim-msg"></div>
+        <h3 style="margin-top:18px">Your positions</h3>
+        <div id="holdings-table"></div>
+      </div>
+    </section>
+
+    <!-- LIVE DESK -->
+    <section class="panel screen" id="tab-livedesk">
+      <h2>Live Desk <span class="live-badge" id="live-state-badge">🔒 Locked</span></h2>
+      <div id="live-locked">
+        <div class="lock-hero">
+          <div class="big">🔒</div>
+          <h3>The Live Desk opens at level 25</h3>
+          <p class="sub">Real market prices — AAPL, MSFT, NVDA, AMZN, TSLA, META, GOOGL, AMD. Clear Gateway 1 and the desk unlocks.</p>
+          <ul class="req-list">
+            <li id="req-level">Level 25 — Gateway 1</li>
+            <li>Real prices, honestly labeled — never simulated</li>
+            <li>Market, limit, stop-loss &amp; take-profit orders</li>
+            <li>2% risk cap on every order</li>
+          </ul>
+        </div>
+      </div>
+      <div id="live-open" class="hidden">
+        <div class="feed-banner live" id="live-banner">REAL MARKET DATA — Yahoo Finance, via the quotes feed.</div>
+        <p class="sub" id="live-asof"></p>
+        <div class="trade-grid" id="live-grid"></div>
+        <div id="live-detail" class="hidden">
+          <h3 id="live-detail-name">—</h3>
+          <canvas class="chart-lg" id="live-chart" width="900" height="260"></canvas>
+          <div class="portfolio" id="live-detail-stats"></div>
+          <div class="controls" style="grid-template-columns:1fr 1fr 1fr 1fr auto">
+            <select id="live-side"><option value="buy">Buy</option><option value="sell">Sell</option></select>
+            <select id="live-type">
+              <option value="market">Market order</option>
+              <option value="limit">Limit order</option>
+              <option value="stop">Stop order</option>
+              <option value="take_profit">Take-profit order</option>
+            </select>
+            <div class="qty"><button type="button" id="live-qty-minus">−</button><b id="live-qty">1</b><button type="button" id="live-qty-plus">+</button></div>
+            <input type="number" id="live-price" placeholder="Limit / stop price ($)" step="0.01" min="0">
+            <button type="button" class="btn" id="live-place">Place order</button>
+          </div>
+          <p class="small">Limit: buy low / sell high at your price. Stop: buy on breakout / sell on breakdown. Take-profit: sell only, locks in a gain. Orders fill at the real cached price, not your trigger price. Open orders are checked against fresh prices every time the feed refreshes.</p>
+          <div class="msg" id="live-msg"></div>
+          <h3 style="margin-top:18px">Your orders this session</h3>
+          <div id="orders-list"><p class="small">No orders placed yet this session. (The server holds your open orders — place one and it appears here.)</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WALLET -->
+    <section class="panel screen" id="tab-wallet">
+      <h2>Practice Wallet</h2>
+      <p class="sub">Practice funds only. No real money, no bank, no broker — deposits and withdrawals are pretend dollars for learning.</p>
+      <div class="wallet-grid">
+        <div>
+          <span class="small">PRACTICE BALANCE</span>
+          <div class="wallet-bal" id="wallet-balance">$0.00</div>
+          <p class="small" id="wallet-cap">Deposit cap: —</p>
+          <div class="preset-row">
+            <button type="button" data-amt="25">$25</button>
+            <button type="button" data-amt="50">$50</button>
+            <button type="button" data-amt="100">$100</button>
+            <button type="button" data-amt="250">$250</button>
+          </div>
+          <label for="wallet-amount">Amount (practice $)</label>
+          <input type="number" id="wallet-amount" min="1" step="0.01" placeholder="0.00">
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button type="button" class="btn" id="wallet-deposit">Add practice funds</button>
+            <button type="button" class="btn dark" id="wallet-withdraw">Take out</button>
+          </div>
+          <div class="msg" id="wallet-msg"></div>
+        </div>
+        <div>
+          <h3>History</h3>
+          <div class="tx-list" id="tx-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AWARDS -->
+    <section class="panel screen" id="tab-awards">
+      <h2>Awards</h2>
+      <p class="sub">Fifteen achievements, the Gateway Road, and the Trader Ready certification.</p>
+      <div id="trader-ready"></div>
+      <h3 style="margin-top:16px">Gateway Road</h3>
+      <div class="gate-row" id="award-gateways"></div>
+      <h3 style="margin-top:16px">The six Trader Ready skills</h3>
+      <div id="skills-list"></div>
+      <h3 style="margin-top:16px">Achievements</h3>
+      <div class="award-grid" id="awards-grid"></div>
+    </section>
+  </div>
+</div>
+
+<!-- ================= LEVEL PLAY ================= -->
+<div id="screen-level">
+  <div class="wrap">
+    <button type="button" class="backlink" id="btn-back-map">← Back to the map</button>
+    <div class="panel" style="margin-top:8px">
+      <h2 id="lvl-title">—</h2>
+      <p class="sub" id="lvl-meta">—</p>
+      <div class="boss-banner" id="lvl-boss"><div class="face">👑</div><div><h3 id="lvl-boss-name">Boss level</h3><p>Beat the boss — a harder chart, a bigger target.</p></div></div>
+      <div class="lesson-grid">
+        <div class="lesson"><h3>📖 Today's lesson</h3><p id="lvl-lesson">—</p><p><b>Takeaway:</b> <span id="lvl-takeaway">—</span></p></div>
+        <div class="history"><div class="kicker">✊ Our history</div><h3 id="lvl-hist-title">—</h3><p id="lvl-hist-body">—</p><p class="link" id="lvl-hist-take">—</p></div>
+      </div>
+      <div class="trade">
+        <div class="trade-head">
+          <div class="ticker"><span id="lvl-ticker">—</span><small id="lvl-ticker-name">—</small></div>
+          <div class="price" id="lvl-price">—</div>
+        </div>
+        <canvas id="chart" width="900" height="230"></canvas>
+        <div class="portfolio">
+          <div class="pf"><b id="lvl-target">$0</b><span>Practice target</span></div>
+          <div class="pf"><b id="lvl-cash">$0</b><span>Practice wallet</span></div>
+          <div class="pf"><b id="lvl-shares">0</b><span>Shares held</span></div>
+          <div class="pf"><b id="lvl-value">$0</b><span>Position value</span></div>
+        </div>
+        <p class="news"><b>🎙️ The challenge</b><span id="lvl-challenge">Buy shares of this company with practice funds, then complete the level. Prices here are simulated practice prices — made up for learning, not real market data.</span></p>
+        <div class="controls">
+          <div class="qty"><button type="button" id="lvl-qty-minus">−</button><b id="lvl-qty">1</b><button type="button" id="lvl-qty-plus">+</button></div>
+          <button type="button" class="btn" id="lvl-buy">Buy</button>
+          <button type="button" class="btn dark" id="lvl-sell">Sell</button>
+          <button type="button" class="btn teal" id="lvl-complete">✅ Complete level</button>
+        </div>
+        <div class="msg" id="lvl-msg"></div>
+        <div class="coach" id="lvl-coach">Coach: trade small, watch the chart, and remember the lesson. You can complete the level once your trade is in — the server awards XP once per level.</div>
+        <div class="log" id="lvl-log"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= OWNERS PORTAL ================= -->
+<div id="screen-owner">
+  <div class="wrap">
+    <button type="button" class="backlink" id="btn-owner-back">← Back to the game</button>
+    <div class="owner-login-wrap" id="owner-login-wrap">
+      <span class="owner-badge"><i></i> Owners Portal</span>
+      <div class="panel">
+        <h2>Owners Portal</h2>
+        <p class="sub">For Tye, the owner. Sign in with your Owner ID and access code.</p>
+        <div class="gift-note"><span class="marker">For Tye —</span><p style="margin:6px 0 0">This portal is yours, Mom. Watch every player climb the map, see the activity as it happens, and export the roster any time. The game is your gift — the portal is how you watch it grow.</p></div>
+        <div id="owner-setup" class="hidden">
+          <p class="sub"><b>First time:</b> no owner account exists yet. Create it now — this can only be done once.</p>
+          <label for="o-setup-name">Owner name</label>
+          <input type="text" id="o-setup-name" value="Tye">
+          <label for="o-setup-id">Owner ID</label>
+          <input type="text" id="o-setup-id" value="tye" autocomplete="off">
+          <label for="o-setup-code">Access code (min. 6 characters)</label>
+          <input type="password" id="o-setup-code" autocomplete="off">
+          <button type="button" class="btn" id="btn-owner-setup" style="margin-top:14px">Create owner account</button>
+        </div>
+        <div id="owner-login">
+          <label for="o-id">Owner ID</label>
+          <input type="text" id="o-id" autocomplete="off">
+          <label for="o-code">Access code</label>
+          <input type="password" id="o-code" autocomplete="off">
+          <button type="button" class="btn dark" id="btn-owner-login" style="margin-top:14px">Enter the portal →</button>
+        </div>
+        <div class="err" id="err-owner"></div>
+      </div>
+    </div>
+
+    <div id="owner-dash" class="hidden">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:18px">
+        <span class="owner-badge"><i></i> Owners Portal — <span id="owner-name">Tye</span></span>
+        <div style="flex:1"></div>
+        <button type="button" class="btn ghost" id="btn-owner-refresh" style="width:auto">↻ Refresh</button>
+        <button type="button" class="btn" id="btn-owner-csv" style="width:auto">⬇ Export roster (CSV)</button>
+        <button type="button" class="btn dark" id="btn-owner-signout" style="width:auto">Sign out</button>
+      </div>
+      <div class="kpi-grid" id="owner-kpis"></div>
+      <div class="owner-cols">
+        <div class="panel"><h3>Live activity</h3><div class="feed" id="owner-feed"></div></div>
+        <div class="panel"><h3>Traffic by screen</h3><canvas id="traffic-chart" width="520" height="190"></canvas><div id="owner-traffic"></div></div>
+      </div>
+      <div class="panel"><h3>🏆 Family Leaderboard — last 7 days</h3><p class="sub" id="owner-leaderboard-note">Ranked by XP earned in the last 7 days — not total XP. Everyone starts fresh every week.</p><div style="overflow:auto"><table class="owner-table"><thead><tr><th>#</th><th>Player</th><th>Tier</th><th>XP this week</th><th>Levels this week</th><th>Level</th></tr></thead><tbody id="owner-leaderboard"></tbody></table></div></div>
+      <div class="panel"><h3>✊ Black History Spotlight — this week</h3><p class="sub">The true story the kids are learning this week — for the whole family to see.</p><div class="history"><div class="kicker spray">✊ Our history</div><h3 id="owner-hist-title">—</h3><p id="owner-hist-body">—</p><p class="link" id="owner-hist-take">—</p></div></div>
+      <div class="panel"><h3>Player roster</h3><div style="overflow:auto"><table class="owner-table"><thead><tr><th>Player</th><th>Tier</th><th>Level</th><th>XP</th><th>XP this week</th><th>Levels this week</th><th>Stars</th><th>Practice balance</th><th>Discipline</th><th>Trader Ready</th></tr></thead><tbody id="owner-roster"></tbody></table></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+<div class="modal" id="ceremony-modal"><div class="box ceremony">
+  <div class="big-emoji">🏆</div>
+  <div class="marker spray" style="color:var(--pink);font-size:18px">Gateway 1 · Cleared</div>
+  <h2>The Live Desk is open</h2>
+  <p id="ceremony-sub">—</p>
+  <div class="certificate">
+    <div class="cert-kicker">Wall St. Cypher · Gateway Certificate</div>
+    <div class="cert-name" id="ceremony-name">—</div>
+    <div class="cert-line">cleared Level 25 — Gateway 1 — and unlocked the Live Desk</div>
+    <div class="cert-meta" id="ceremony-meta">—</div>
+  </div>
+  <div class="history" style="text-align:left;margin-top:16px"><div class="kicker spray">✊ Our history — Level 25's story</div><h3 id="ceremony-hist-title">—</h3><p id="ceremony-hist-body">—</p><p class="link" id="ceremony-hist-take">—</p></div>
+  <p class="small">Real market prices now — AAPL, MSFT, NVDA, AMZN, TSLA, META, GOOGL, AMD. Practice cap $500. Practice funds only, always.</p>
+  <div class="row">
+    <button type="button" class="btn ghost" id="ceremony-map">Back to map</button>
+    <button type="button" class="btn" id="ceremony-desk">Enter the Live Desk →</button>
+  </div>
+</div></div>
+<div class="modal" id="modal"><div class="box">
+  <div class="big-emoji" id="modal-emoji">🎉</div>
+  <h2 id="modal-title">Level complete!</h2>
+  <p id="modal-body">—</p>
+  <div class="row">
+    <button type="button" class="btn ghost" id="modal-map">Back to map</button>
+    <button type="button" class="btn" id="modal-next">Next level →</button>
+  </div>
+</div></div>
+
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
