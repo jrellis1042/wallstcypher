@@ -1,0 +1,54 @@
+# .github/workflows/quotes.yml — Wall St. Cypher live-quotes refresh.
+#
+# Fetches real Yahoo Finance quotes (free, no key) with the dependency-free
+# Node script in scripts/fetch-quotes.mjs and commits data/quotes.json.
+# The frontend reads quotes.json same-origin and pushes it into Supabase
+# via the cypher_cache_quotes RPC (see supabase/schema.sql + API.md).
+#
+# Schedule (UTC; ET = UTC-5 in winter, UTC-4 in summer):
+#   - Every 10 min, 13:00-21:59 UTC Mon-Fri — covers the 09:30-16:00 ET
+#     market session in both EST and EDT, plus a little either side.
+#   - Daily 12:05 UTC Mon-Fri (08:05 ET) — the pre-market full refresh,
+#     so the 60-candle history is fresh before the open.
+#   - workflow_dispatch — manual run (use this for the FIRST run after
+#     creating the repo, so data/quotes.json exists before launch).
+#
+# No secrets are needed: Yahoo needs no key, and the commit uses the
+# built-in GITHUB_TOKEN. No Supabase key is used here at all.
+name: Refresh live quotes
+
+on:
+  schedule:
+    - cron: '*/10 13-21 * * 1-5'
+    - cron: '5 12 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: quotes-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Fetch quotes from Yahoo Finance
+        run: node scripts/fetch-quotes.mjs
+
+      - name: Commit data/quotes.json if it changed
+        run: |
+          git config user.name 'wall-st-cypher-quotes'
+          git config user.email 'quotes@wallstcypher.local'
+          git add data/quotes.json
+          git diff --cached --quiet || git commit -m "quotes: refresh $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push
