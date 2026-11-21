@@ -1403,6 +1403,35 @@ begin
 end;
 $$;
 
+-- Owner-only: reset a player's 4-digit PIN. The player keeps their
+-- username, level, XP and wallet — only the PIN changes. Owner token
+-- required; a bad username and an unknown username give the same error
+-- (no user enumeration).
+create or replace function public.resetplayerpin(p_owner_token text, p_username text, p_new_pin text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_owner_id uuid := public._cypher_owner_auth(p_owner_token);
+  v_username text := lower(trim(p_username));
+  v_id uuid;
+begin
+  if v_username !~ '^[a-z0-9_]{3,20}$' then
+    raise exception 'no player found with that username';
+  end if;
+  if p_new_pin !~ '^[0-9]{4}$' then
+    raise exception 'new PIN must be exactly 4 digits';
+  end if;
+  update public.cypher_profiles set pin_hash = crypt(p_new_pin, gen_salt('bf'))
+   where username = v_username returning id into v_id;
+  if v_id is null then
+    raise exception 'no player found with that username';
+  end if;
+  insert into public.cypher_events (profile_id, kind, detail)
+  values (v_id, 'pin_reset',
+          jsonb_build_object('username', v_username, 'by_owner', v_owner_id));
+  return jsonb_build_object('username', v_username, 'pin_reset', true);
+end;
+$$;
+
 -- Owner dashboard: totals, traffic by screen, event counts, player roster,
 -- live activity feed. Owner token required. No PINs, hashes, or session
 -- tokens are ever returned here.
@@ -1522,6 +1551,7 @@ grant execute on function public.setupowner(text, text, text) to anon, authentic
 grant execute on function public.loginowner(text, text) to anon, authenticated;
 grant execute on function public.ownerstatus() to anon, authenticated;
 grant execute on function public.getownerdashboard(text) to anon, authenticated;
+grant execute on function public.resetplayerpin(text, text, text) to anon, authenticated;
 grant execute on function public.cypher_cache_quotes(jsonb) to anon, authenticated;
 
 -- ============================================================================

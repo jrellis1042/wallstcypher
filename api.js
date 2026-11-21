@@ -81,6 +81,8 @@
       rpc('setupowner', { p_name: name, p_owner_id: owner_id, p_access_code: access_code }),
     loginOwner: (owner_id, access_code) => rpc('loginowner', { p_owner_id: owner_id, p_access_code: access_code }),
     getOwnerDashboard: (owner_token) => rpc('getownerdashboard', { p_owner_token: owner_token }),
+    resetPlayerPin: (owner_token, username, pin) =>
+      rpc('resetplayerpin', { p_owner_token: owner_token, p_username: username, p_new_pin: pin }),
     fetchQuotesFile: fetchQuotesFile,
     pushQuotes: pushQuotes
   };

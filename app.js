@@ -929,6 +929,21 @@
       state.ownerToken = null; localStorage.removeItem('wsc_owner_token');
       $('owner-dash').classList.add('hidden'); $('owner-login-wrap').classList.remove('hidden');
     });
+    $('btn-forgot').addEventListener('click', function () {
+      $('recover-panel').classList.toggle('hidden');
+    });
+    $('btn-reset-pin').addEventListener('click', async function () {
+      hideErr('err-reset'); $('reset-ok').textContent = '';
+      var user = $('reset-user').value.trim().toLowerCase();
+      var pin = $('reset-pin').value.trim();
+      if (!user || !/^\d{4}$/.test(pin)) { showErr('err-reset', 'Enter the player username and a new 4-digit PIN.'); return; }
+      if (!state.ownerToken) { showErr('err-reset', 'Sign in to the Owners Portal first.'); return; }
+      try {
+        var r = await Api.resetPlayerPin(state.ownerToken, user, pin);
+        $('reset-ok').textContent = 'PIN reset for ' + (r.username || user) + '. They can log in with the new PIN now.';
+        $('reset-pin').value = '';
+      } catch (e) { showErr('err-reset', e.message); }
+    });
   }
 
   // ---------- boot ----------

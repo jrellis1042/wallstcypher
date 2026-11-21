@@ -35,7 +35,7 @@
         <div class="stat"><b>$0</b><span>Real money</span></div>
       </div>
       <p><span class="marker" style="color:var(--pink);font-size:18px">How it unlocks:</span><br>
-      Levels <b>1–25</b> are Act I — The Beginning. Finish 25 and the gate swings open to <b>75 more levels</b> (26–100) — Act II, The Golden Age. Clear level <b>100</b> and a second gate drops <b>100 legacy levels</b> (101–200) — Act III, The Modern Era. Every 5th level is a boss. Clear <b>all 200</b> and earn the <b>Trader Ready</b> certification. The <b>Live Desk</b> — real market prices — opens at level 25. Practice funds only, always.</p>
+      Three acts — Act I The Beginning (<b>1–25</b>), Act II The Golden Age (<b>26–100</b>), Act III The Modern Era (<b>101–200</b>). A <b>Gateway</b> boss waits every <b>25 levels</b> — 25, 50, 75, 100, 125, 150, 175, 200. Clear a Gateway for a <b>+50 XP</b> bonus and a bigger practice deposit cap. The <b>Live Desk</b> — real market prices — opens at Gateway 1 (level 25). Clear <b>all 200</b> and earn the <b>Trader Ready</b> certification. Practice funds only, always.</p>
     </div>
 
     <div class="card" aria-label="Profile front door">
@@ -76,6 +76,11 @@
         <input type="password" id="l-pin" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
         <button type="submit" class="btn dark">Log In →</button>
         <div class="err" id="err-login"></div>
+        <p class="fineprint"><button type="button" class="backlink" id="btn-forgot">Forgot PIN or username?</button></p>
+        <div id="recover-panel" class="hidden" style="text-align:left">
+          <p class="sub"><b>Forgot your username?</b> Ask the owner — she can find it in the player roster in the Owners Portal.</p>
+          <p class="sub"><b>Forgot your PIN?</b> The owner can reset it for you from the Owners Portal. Tell her your username and your new 4-digit PIN — your levels, XP and practice wallet stay exactly as they are. There is no email reset: the game never asks for an email, so only the owner can change a PIN.</p>
+        </div>
       </form>
     </div>
   </section>
@@ -342,6 +347,7 @@
       </div>
       <div class="panel"><h3>🏆 Family Leaderboard — last 7 days</h3><p class="sub" id="owner-leaderboard-note">Ranked by XP earned in the last 7 days — not total XP. Everyone starts fresh every week.</p><div style="overflow:auto"><table class="owner-table"><thead><tr><th>#</th><th>Player</th><th>Tier</th><th>XP this week</th><th>Levels this week</th><th>Level</th></tr></thead><tbody id="owner-leaderboard"></tbody></table></div></div>
       <div class="panel"><h3>✊ Black History Spotlight — this week</h3><p class="sub">The true story the kids are learning this week — for the whole family to see.</p><div class="history"><div class="kicker spray">✊ Our history</div><h3 id="owner-hist-title">—</h3><p id="owner-hist-body">—</p><p class="link" id="owner-hist-take">—</p></div></div>
+      <div class="panel"><h3>🔑 Reset a player's PIN</h3><p class="sub">Forgot PIN? Enter the player's username and a new 4-digit PIN. Their levels, XP and practice wallet stay exactly as they are.</p><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end"><div><label for="reset-user">Username</label><input type="text" id="reset-user" maxlength="20" autocomplete="off" style="max-width:220px"></div><div><label for="reset-pin">New 4-digit PIN</label><input type="password" id="reset-pin" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off" style="max-width:140px"></div><button type="button" class="btn dark" id="btn-reset-pin" style="width:auto">Reset PIN</button></div><div class="err" id="err-reset"></div><p class="small" id="reset-ok"></p></div>
       <div class="panel"><h3>Player roster</h3><div style="overflow:auto"><table class="owner-table"><thead><tr><th>Player</th><th>Tier</th><th>Level</th><th>XP</th><th>XP this week</th><th>Levels this week</th><th>Stars</th><th>Practice balance</th><th>Discipline</th><th>Trader Ready</th></tr></thead><tbody id="owner-roster"></tbody></table></div></div>
     </div>
   </div>
