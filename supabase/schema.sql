@@ -689,6 +689,11 @@ $$;
 
 -- Create a profile. PIN is exactly 4 digits; only its bcrypt hash is stored.
 -- Username is lowercased and must be unique. Returns the new profile.
+-- Welcome practice funds (Nov 21, 2026 fix): the profile starts with a
+-- $250 'deposit' ledger row — the full Gateway-0 deposit cap — so a new
+-- player can trade from Level 1. Without it a fresh wallet is $0 and
+-- every Buy fails with no usable message. The grant counts toward the
+-- lifetime deposit cap, so it creates no extra headroom.
 create or replace function public.createprofile(
   p_username text, p_display_name text, p_pin text, p_tier text default 'Rookie')
 returns jsonb language plpgsql security definer set search_path = public as $$
@@ -718,6 +723,8 @@ begin
     raise exception 'username % is already taken', v_username;
   end;
   insert into public.cypher_progress (profile_id) values (v_id);
+  insert into public.cypher_wallet_ledger (profile_id, kind, amount, balance_after, note)
+  values (v_id, 'deposit', 250, 250, 'welcome practice funds');
   insert into public.cypher_events (profile_id, kind, detail)
   values (v_id, 'profile_created',
           jsonb_build_object('username', v_username, 'tier', p_tier));
@@ -766,7 +773,9 @@ begin
     'profile', jsonb_build_object(
       'profile_id', r.id, 'username', r.username,
       'display_name', r.display_name, 'tier', r.tier,
-      'created_at', r.created_at),
+      'created_at', r.created_at,
+      'recovery_email_set', (r.recovery_email is not null),
+      'recovery_prompted', (r.recovery_prompted_at is not null)),
     'progress', jsonb_build_object(
       'level', pg.level, 'xp', pg.xp, 'stars', pg.stars,
       'skills', coalesce(pg.skills, '{}'::jsonb),
@@ -1530,6 +1539,216 @@ end;
 $$;
 
 -- ============================================================================
+-- EMAIL RECOVERY (added Nov 21, 2026 — Rashad: "Account recovery should
+-- via email." Players reset their OWN PIN from the login screen; the
+-- owner reset (resetplayerpin) stays as the fallback for players with
+-- no recovery email on file.)
+--
+-- HOW IT WORKS
+--   * profiles.recovery_email — OPTIONAL, collected at signup (labelled
+--     parent/guardian email for Little Legends) and changeable after
+--     sign-in. Never required: the game promises "no real names, no
+--     birthdays" and never asks for an email to play; the owner reset
+--     covers anyone without one.
+--   * profiles.recovery_prompted_at — set when the player is asked once
+--     after sign-in to add an email (or dismisses the ask), so the
+--     prompt never nags every login.
+--   * cypher_reset_tokens — one row per reset request. Only the SHA-256
+--     hash of the token is stored, never the token itself. Single-use,
+--     1-hour expiry. The link is https://wallstcypher.com/?reset=<token>.
+--   * cypher_settings — server-side settings the RPCs read. Holds the
+--     Resend API key (key 'resend_api_key') and the From address
+--     (key 'resend_from', e.g. 'Wall St. Cypher <no-reply@wallstcypher.com>').
+--     RLS deny-all: only SECURITY DEFINER RPCs read it. The key is
+--     inserted by hand in the SQL editor after a Resend account is
+--     created and wallstcypher.com is verified in Resend (DNS TXT
+--     records at Spaceship) — there is no email key anywhere in the
+--     repo, and no send route exists without one.
+--   * Sending goes through Resend's HTTP API via pg_net (net.http_post),
+--     called from inside requestpinreset — no Edge Function, no new
+--     deploy surface. pg_net is async: the call queues the send and the
+--     RPC returns the same generic answer either way.
+--   * requestpinreset() NEVER enumerates: unknown username, or a player
+--     with no email on file, gets the exact same {ok: true} as a real
+--     send. If the Resend key is not configured it raises instead, so
+--     the frontend can tell the player to ask the owner rather than
+--     wait on an email that will never arrive.
+-- ============================================================================
+
+create extension if not exists pg_net with schema extensions;
+
+alter table public.cypher_profiles
+  add column if not exists recovery_email text
+    check (recovery_email is null
+           or (char_length(recovery_email) <= 254
+               and recovery_email ~* '^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$'));
+alter table public.cypher_profiles
+  add column if not exists recovery_prompted_at timestamptz;
+
+create table if not exists public.cypher_settings (
+  key        text primary key,
+  value      text not null,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.cypher_reset_tokens (
+  id         uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references public.cypher_profiles (id) on delete cascade,
+  token_hash text not null unique,
+  expires_at timestamptz not null,
+  used_at    timestamptz,
+  created_at timestamptz not null default now(),
+  check (expires_at > created_at)
+);
+
+create index if not exists idx_cypher_reset_tokens_profile
+  on public.cypher_reset_tokens (profile_id);
+create index if not exists idx_cypher_reset_tokens_hash
+  on public.cypher_reset_tokens (token_hash);
+
+alter table public.cypher_settings     enable row level security;
+alter table public.cypher_reset_tokens  enable row level security;
+revoke all on public.cypher_settings     from anon, authenticated;
+revoke all on public.cypher_reset_tokens  from anon, authenticated;
+
+-- Ask for a PIN reset email. Generic {ok: true} in EVERY case where an
+-- email cannot be sent to this username (unknown username, or no email
+-- on file) — the caller can never tell which. One active token at a
+-- time; while a live token exists no second email is sent
+-- (rate limit, no inbox spam) — the player uses the link already sent.
+create or replace function public.requestpinreset(p_username text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_username   text := lower(trim(p_username));
+  r            record;
+  v_token      text;
+  v_token_hash text;
+  v_key        text;
+  v_from       text;
+  v_url        text;
+  v_req_id     bigint;
+begin
+  select id, recovery_email into r
+    from public.cypher_profiles where username = v_username;
+  if r.id is null or r.recovery_email is null then
+    return jsonb_build_object('ok', true);
+  end if;
+
+  delete from public.cypher_reset_tokens
+   where profile_id = r.id and (used_at is not null or expires_at <= now());
+  select token_hash into v_token_hash
+    from public.cypher_reset_tokens
+   where profile_id = r.id and used_at is null and expires_at > now()
+   order by created_at desc limit 1;
+  if v_token_hash is not null then
+    return jsonb_build_object('ok', true);
+  end if;
+
+  select value into v_key from public.cypher_settings where key = 'resend_api_key';
+  if v_key is null or v_key = '' then
+    raise exception 'email reset is not set up yet — ask the owner to reset your PIN from the Owners Portal';
+  end if;
+  select value into v_from from public.cypher_settings where key = 'resend_from';
+  if v_from is null or v_from = '' then
+    v_from := 'Wall St. Cypher <no-reply@wallstcypher.com>';
+  end if;
+
+  v_token := encode(gen_random_bytes(32), 'hex');
+  v_token_hash := encode(digest(v_token, 'sha256'), 'hex');
+  insert into public.cypher_reset_tokens (profile_id, token_hash, expires_at)
+  values (r.id, v_token_hash, now() + interval '1 hour');
+
+  v_url := 'https://wallstcypher.com/?reset=' || v_token;
+  v_req_id := net.http_post(
+    url := 'https://api.resend.com/emails',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || v_key),
+    body := jsonb_build_object(
+      'from', v_from,
+      'to', jsonb_build_array(r.recovery_email),
+      'subject', 'Reset your Wall St. Cypher PIN',
+      'html', '<p>Someone asked to reset the PIN for Wall St. Cypher player <b>' || v_username || '</b>.</p>'
+        || '<p><a href="' || v_url || '">Tap here to set a new 4-digit PIN</a> — the link works once and expires in 1 hour.</p>'
+        || '<p>If you did not ask for this, ignore this email. Your levels, XP and practice wallet stay exactly as they are.</p>'
+        || '<p>Wall St. Cypher — practice funds only, no real money, ever.</p>'));
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+-- Set a new PIN with a reset link token. Single-use, 1-hour expiry; a
+-- bad or expired token and a wrong token give the same error. On
+-- success every session for the player is ended (sign in again with
+-- the new PIN) and the reset is logged as via 'email'.
+create or replace function public.resetpinwithtoken(p_token text, p_new_pin text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_hash       text := encode(digest(nullif(trim(p_token), ''), 'sha256'), 'hex');
+  v_profile_id uuid;
+  v_username   text;
+begin
+  if p_new_pin !~ '^[0-9]{4}$' then
+    raise exception 'new PIN must be exactly 4 digits';
+  end if;
+  select t.profile_id into v_profile_id
+    from public.cypher_reset_tokens t
+   where t.token_hash = v_hash and t.used_at is null and t.expires_at > now();
+  if v_profile_id is null then
+    raise exception 'this reset link is invalid or expired — ask for a new one, or ask the owner to reset your PIN';
+  end if;
+  update public.cypher_profiles set pin_hash = crypt(p_new_pin, gen_salt('bf'))
+   where id = v_profile_id returning username into v_username;
+  update public.cypher_reset_tokens set used_at = now()
+   where token_hash = v_hash;
+  delete from public.cypher_sessions where profile_id = v_profile_id;
+  insert into public.cypher_events (profile_id, kind, detail)
+  values (v_profile_id, 'pin_reset',
+          jsonb_build_object('username', v_username, 'via', 'email'));
+  return jsonb_build_object('username', v_username, 'pin_reset', true);
+end;
+$$;
+
+-- Set (or change) the signed-in player's recovery email. Empty string
+-- clears it. Marks the player as prompted either way, so the
+-- post-sign-in ask never shows again for them.
+create or replace function public.setrecoveryemail(p_token text, p_email text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_profile_id uuid := public._cypher_auth(p_token);
+  v_email text := lower(trim(coalesce(p_email, '')));
+begin
+  if v_email = '' then
+    update public.cypher_profiles
+       set recovery_email = null, recovery_prompted_at = now()
+     where id = v_profile_id;
+    return jsonb_build_object('recovery_email_set', false);
+  end if;
+  if char_length(v_email) > 254
+     or v_email !~* '^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$' then
+    raise exception 'that email does not look right — check it and try again';
+  end if;
+  update public.cypher_profiles
+     set recovery_email = v_email, recovery_prompted_at = now()
+   where id = v_profile_id;
+  return jsonb_build_object('recovery_email_set', true);
+end;
+$$;
+
+-- "Not now" on the post-sign-in recovery-email ask. Records the ask so
+-- it shows once only — the player can still add an email later from
+-- the start screen.
+create or replace function public.dismissrecoveryprompt(p_token text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_profile_id uuid := public._cypher_auth(p_token);
+begin
+  update public.cypher_profiles set recovery_prompted_at = now()
+   where id = v_profile_id;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+-- ============================================================================
 -- GRANTS — the frontend (anon key) may call the RPCs, nothing else.
 -- Internal _cypher_* helpers get NO grant on purpose.
 -- ============================================================================
@@ -1552,6 +1771,10 @@ grant execute on function public.loginowner(text, text) to anon, authenticated;
 grant execute on function public.ownerstatus() to anon, authenticated;
 grant execute on function public.getownerdashboard(text) to anon, authenticated;
 grant execute on function public.resetplayerpin(text, text, text) to anon, authenticated;
+grant execute on function public.requestpinreset(text) to anon, authenticated;
+grant execute on function public.resetpinwithtoken(text, text) to anon, authenticated;
+grant execute on function public.setrecoveryemail(text, text) to anon, authenticated;
+grant execute on function public.dismissrecoveryprompt(text) to anon, authenticated;
 grant execute on function public.cypher_cache_quotes(jsonb) to anon, authenticated;
 
 -- ============================================================================
@@ -1610,6 +1833,39 @@ grant execute on function public.cypher_cache_quotes(jsonb) to anon, authenticat
 -- 10. EMERGENCY ONLY — reset the owner account (lets setupowner run again):
 --    delete from public.cypher_owner_sessions;
 --    delete from public.cypher_owners;
+--
+-- 11. EMAIL RECOVERY (run after the migration, before deploying the
+--     frontend — needs the Resend key in cypher_settings first):
+--    a. New objects exist:
+--       select proname from pg_proc where pronamespace = 'public'::regnamespace
+--        and proname in ('requestpinreset','resetpinwithtoken','setrecoveryemail','dismissrecoveryprompt')
+--       order by 1;  -- expect all four
+--       select column_name from information_schema.columns
+--        where table_name = 'cypher_profiles'
+--          and column_name in ('recovery_email','recovery_prompted_at');
+--       select * from pg_extension where extname = 'pg_net';  -- must return a row
+--       select n.nspname, p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+--        where p.proname like 'http_%';  -- expect net.http_post (schema may be net)
+--    b. Insert the Resend key + From (run once, with the REAL key —
+--       never commit it to the repo):
+--       insert into public.cypher_settings (key, value)
+--       values ('resend_api_key', '<RE_...KEY>'),
+--              ('resend_from', 'Wall St. Cypher <no-reply@wallstcypher.com>')
+--       on conflict (key) do update set value = excluded.value, updated_at = now();
+--    c. No-enumeration check — unknown username returns ok, no token row:
+--       select public.requestpinreset('no_such_player_xyz');  -- expect {"ok": true}
+--       select count(*) from public.cypher_reset_tokens;  -- expect 0
+--    d. Full loop on a throwaway profile (delete it afterwards):
+--       select public.createprofile('recovery_test', 'Recovery Test', '1234', 'Rookie');
+--       select public._cypher_balance(id) from public.cypher_profiles
+--        where username = 'recovery_test';  -- expect 250.00 (welcome grant)
+--       select public.loginprofile('recovery_test', '1234');  -- copy the token
+--       select public.setrecoveryemail('<TOKEN>', 'rashad@example.com');
+--       select public.requestpinreset('recovery_test');  -- expect {"ok": true}; check the inbox for the link
+--       select public.resetpinwithtoken('<TOKEN-FROM-THE-LINK>', '4321');  -- expect pin_reset true
+--       select public.loginprofile('recovery_test', '4321');  -- new PIN works; old PIN must fail
+--       select public.resetpinwithtoken('<SAME-TOKEN>', '9999');  -- must FAIL (single-use)
+--       delete from public.cypher_profiles where username = 'recovery_test';
 -- ============================================================================
 -- END OF SCHEMA
 -- ============================================================================
