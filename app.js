@@ -167,7 +167,14 @@
     ['screen-door', 'screen-start', 'screen-app', 'screen-level', 'screen-owner'].forEach(function (s) {
       var el = $(s); if (!el) return;
       el.style.display = (s === id) ? '' : 'none';
-      if (s === 'screen-start') el.classList.toggle('show', s === id);
+      // The 'show' class is what actually displays a screen: styles.css
+      // hides every .screen by default and only .screen.show renders.
+      // (Inline display='' alone does NOT beat the ID-selector display:none
+      // rules that used to live in styles.css, which is why app/level/owner
+      // rendered blank. Those ID rules are removed; the class is the switch.)
+      // #screen-door has no .screen class (it is a flex .door layout), so
+      // its visibility still rides on the inline display above.
+      el.classList.toggle('show', s === id);
     });
     window.scrollTo(0, 0);
   }

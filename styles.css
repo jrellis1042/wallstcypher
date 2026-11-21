@@ -75,7 +75,10 @@ input[type=text],select{width:100%;border:2px solid var(--ink);border-radius:12p
 .how h3{font-size:16.5px;margin-bottom:6px}.how p{margin:0;color:var(--muted);font-size:14.5px}
 .how .tag{font-family:"Rubik Spray Paint","Permanent Marker",cursive;color:var(--pink);font-size:16px}
 /* ---------- APP SHELL ---------- */
-#screen-app{display:none}
+/* NOTE: screen visibility is governed ONLY by .screen / .screen.show below.
+   Do not re-add #screen-* {display:none} rules here — an ID selector
+   outranks .screen.show, so the target screen would render blank even
+   with the 'show' class (the Nov 20 blank-screen bug). */
 .topbar{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:2px solid var(--ink)}
 .topbar-in{max-width:1120px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:10px 18px;flex-wrap:wrap}
 .topbar .spacer{flex:1}
@@ -151,7 +154,6 @@ input[type=number]{width:100%;border:2px solid var(--ink);border-radius:12px;pad
 .level-btn.locked{opacity:.45;cursor:not-allowed;border-style:dashed}
 .level-btn.next{box-shadow:4px 4px 0 var(--ink);background:var(--gold);color:#16130E}
 /* ---------- LEVEL PLAY ---------- */
-#screen-level{display:none}
 .backlink{background:none;border:none;font-weight:800;text-decoration:underline;min-height:40px;padding:8px 4px;color:var(--ink)}
 .lesson-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
 .lesson{background:var(--panel);border:2px solid var(--ink);border-radius:16px;padding:18px}
@@ -195,7 +197,6 @@ canvas#chart{width:100%;height:230px;display:block;background:var(--bg);border:2
 .modal p{color:var(--muted)}
 .modal .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
 /* ---------- OWNERS PORTAL ---------- */
-#screen-owner{display:none}
 .owner-login-wrap{max-width:520px;margin:28px auto 0}
 .owner-badge{display:inline-flex;align-items:center;gap:7px;background:var(--coal);color:var(--gold);border:2px solid var(--ink);border-radius:999px;padding:6px 12px;font-weight:800;font-size:12px;letter-spacing:.07em;text-transform:uppercase}
 .owner-badge i{width:9px;height:9px;border-radius:50%;background:#2ECC71;display:block;animation:pulse 1.4s infinite}
@@ -242,8 +243,6 @@ footer{max-width:1120px;margin:0 auto;padding:0 20px 34px;color:var(--muted);fon
 .gift-note .marker{color:var(--pink);font-size:17px}
 .screen{display:none}
 .screen.show{display:block}
-#screen-start{display:none}
-#screen-start.show{display:block}
 .start-hero{text-align:center;padding:34px 18px 10px}
 .start-hero h1{font-size:clamp(34px,6vw,64px)}
 .chips{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:18px 0}
