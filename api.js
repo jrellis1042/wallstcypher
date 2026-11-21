@@ -52,32 +52,35 @@
   }
 
   async function pushQuotes(payload) {
-    return rpc('cypher_cache_quotes', { payload: payload });
+    // NOTE: PostgREST matches RPC arguments by PARAMETER NAME, so the JSON
+    // keys below must match the p_-prefixed parameter names in schema.sql
+    // exactly (e.g. p_username, not username) or the call 404s.
+    return rpc('cypher_cache_quotes', { p_payload: payload });
   }
 
   const Api = {
     rpc: rpc,
     createProfile: (username, display_name, pin, tier) =>
-      rpc('createprofile', { username: username, display_name: display_name, pin: pin, tier: tier }),
-    loginProfile: (username, pin) => rpc('loginprofile', { username: username, pin: pin }),
-    getSession: (token) => rpc('getsession', { token: token }),
-    completeLevel: (token, level) => rpc('completelevel', { token: token, level: level }),
-    updateTier: (token, tier) => rpc('updatetier', { token: token, tier: tier }),
-    walletMove: (token, kind, amount) => rpc('walletmove', { token: token, kind: kind, amount: amount }),
+      rpc('createprofile', { p_username: username, p_display_name: display_name, p_pin: pin, p_tier: tier }),
+    loginProfile: (username, pin) => rpc('loginprofile', { p_username: username, p_pin: pin }),
+    getSession: (token) => rpc('getsession', { p_token: token }),
+    completeLevel: (token, level) => rpc('completelevel', { p_token: token, p_level: level }),
+    updateTier: (token, tier) => rpc('updatetier', { p_token: token, p_tier: tier }),
+    walletMove: (token, kind, amount) => rpc('walletmove', { p_token: token, p_kind: kind, p_amount: amount }),
     paperTrade: (token, ticker, side, qty, price) =>
-      rpc('papertrade', { token: token, ticker: ticker, side: side, qty: qty, price: price }),
+      rpc('papertrade', { p_token: token, p_ticker: ticker, p_side: side, p_qty: qty, p_price: price }),
     placeOrder: (token, ticker, side, order_type, qty, limit_price, stop_price) =>
-      rpc('placeorder', { token: token, ticker: ticker, side: side, order_type: order_type, qty: qty, limit_price: limit_price, stop_price: stop_price }),
-    cancelOrder: (token, order_id) => rpc('cancelorder', { token: token, order_id: order_id }),
-    getOrders: (token) => rpc('getorders', { token: token }),
+      rpc('placeorder', { p_token: token, p_ticker: ticker, p_side: side, p_order_type: order_type, p_qty: qty, p_limit_price: limit_price, p_stop_price: stop_price }),
+    cancelOrder: (token, order_id) => rpc('cancelorder', { p_token: token, p_order_id: order_id }),
+    getOrders: (token) => rpc('getorders', { p_token: token }),
     getLivePrices: () => rpc('getliveprices', {}),
     getPrices: () => rpc('getprices', {}),
-    logEvent: (token, kind, detail) => rpc('logevent', { token: token, kind: kind, detail: detail }),
+    logEvent: (token, kind, detail) => rpc('logevent', { p_token: token, p_kind: kind, p_detail: detail }),
     ownerStatus: () => rpc('ownerstatus', {}),
     setupOwner: (name, owner_id, access_code) =>
-      rpc('setupowner', { name: name, owner_id: owner_id, access_code: access_code }),
-    loginOwner: (owner_id, access_code) => rpc('loginowner', { owner_id: owner_id, access_code: access_code }),
-    getOwnerDashboard: (owner_token) => rpc('getownerdashboard', { owner_token: owner_token }),
+      rpc('setupowner', { p_name: name, p_owner_id: owner_id, p_access_code: access_code }),
+    loginOwner: (owner_id, access_code) => rpc('loginowner', { p_owner_id: owner_id, p_access_code: access_code }),
+    getOwnerDashboard: (owner_token) => rpc('getownerdashboard', { p_owner_token: owner_token }),
     fetchQuotesFile: fetchQuotesFile,
     pushQuotes: pushQuotes
   };
