@@ -102,6 +102,23 @@
   function showErr(id, msg) { var e = $(id); if (!e) return; e.textContent = msg; e.style.display = 'block'; }
   function hideErr(id) { var e = $(id); if (e) e.style.display = 'none'; }
   function showMsg(id, msg, ok) { var e = $(id); if (!e) return; e.textContent = msg; e.className = 'msg ' + (ok ? 'ok' : 'bad'); }
+  // Trade errors, made unmissable (Nov 21, 2026 fix): the server's money
+  // errors name the problem but not the fix, and the inline message sits
+  // below the fold on a phone — a $0 wallet made Buy look dead. Point
+  // the player at the Wallet tab and toast the same words, so the message
+  // is seen even when the inline box is off-screen. Returns the message
+  // to show inline; non-money errors pass through untouched (no toast).
+  function tradeError(msg) {
+    if (/insufficient practice funds|account value must be above \$0/i.test(msg)) {
+      msg += ' Add practice funds on the Wallet tab.';
+    } else if (/insufficient shares/i.test(msg)) {
+      msg += ' Buy some first, then sell.';
+    } else {
+      return msg;
+    }
+    toast(msg);
+    return msg;
+  }
   function logLine(msg) { var l = $('lvl-log'); if (!l) return; var d = document.createElement('div'); d.textContent = msg; l.prepend(d); }
   function logEvent(kind, detail) {
     if (!state.token) return;
@@ -220,7 +237,7 @@
     renderMap(); renderAwards(); renderWallet();
     var badge = $('live-badge');
     if (pr.level >= 25) { badge.textContent = 'Open'; badge.classList.add('open'); }
-    else { badge.textContent = 'Locked · Lvl 25'; badge.classList.remove('open'); }
+    else { badge.textContent = '🔒 Lvl 25'; badge.classList.remove('open'); }
   }
   function renderStart() {
     var p = state.profile, pr = state.progress, w = state.wallet;
@@ -332,6 +349,22 @@
     var lv = state.currentLevel; if (!lv) return;
     var t = state.sim && state.sim.tickers && state.sim.tickers[lv.ticker];
     if (!t) { showMsg('lvl-msg', 'Practice prices are still loading — try again in a moment.', false); return; }
+    // Pre-flight, client-side (Nov 21, 2026 fix): catch a trade that
+    // cannot proceed BEFORE the round trip, in plain words, instead of
+    // leaving the player staring at a dead button. A fresh wallet is
+    // $250, but 10 shares of a $90 ticker still costs more than that.
+    var bal = state.wallet ? state.wallet.balance : 0;
+    if (side === 'buy' && state.lvlQty * t.price > bal) {
+      var m = 'Not enough practice funds — this trade costs ' + money(state.lvlQty * t.price) + ' but your wallet has ' + money(bal) + '. Add practice funds on the Wallet tab.';
+      showMsg('lvl-msg', m, false); toast(m); return;
+    }
+    if (side === 'sell') {
+      var h0 = holdingFor(lv.ticker);
+      if ((h0.shares || 0) < state.lvlQty) {
+        var m2 = 'You hold ' + (h0.shares || 0) + ' ' + lv.ticker + ' — nothing to sell. Buy some first, then sell.';
+        showMsg('lvl-msg', m2, false); toast(m2); return;
+      }
+    }
     try {
       var r = await Api.paperTrade(state.token, lv.ticker, side, state.lvlQty, t.price);
       await refreshSession(); updateLevelPanel();
@@ -339,7 +372,7 @@
       showMsg('lvl-msg', (side === 'buy' ? 'Bought ' : 'Sold ') + r.qty + ' ' + lv.ticker + ' at ' + money(r.price) + ' (practice). Balance ' + money(r.balance) + '.', true);
       logLine((side === 'buy' ? 'Bought ' : 'Sold ') + r.qty + ' ' + lv.ticker + ' @ ' + money(r.price));
       logEvent('trade', { desk: 'trade_floor', ticker: lv.ticker, side: side, qty: state.lvlQty, simulated: true });
-    } catch (e) { showMsg('lvl-msg', e.message, false); }
+    } catch (e) { showMsg('lvl-msg', tradeError(e.message), false); }
   }
   async function completeCurrentLevel() {
     var lv = state.currentLevel; if (!lv) return;
@@ -489,6 +522,21 @@
   async function simTrade(side) {
     var sym = state.simTicker; if (!sym) { showMsg('sim-msg', 'Pick a ticker first.', false); return; }
     var t = state.sim.tickers[sym];
+    // Pre-flight, client-side (Nov 21, 2026 fix — same silent-Buy bug as
+    // Level 1): say plainly why the trade cannot proceed, before the
+    // round trip, and toast it so it is seen.
+    var bal2 = state.wallet ? state.wallet.balance : 0;
+    if (side === 'buy' && state.simQty * t.price > bal2) {
+      var m = 'Not enough practice funds — this trade costs ' + money(state.simQty * t.price) + ' but your wallet has ' + money(bal2) + '. Add practice funds on the Wallet tab.';
+      showMsg('sim-msg', m, false); toast(m); return;
+    }
+    if (side === 'sell') {
+      var h0 = holdingFor(sym);
+      if ((h0.shares || 0) < state.simQty) {
+        var m2 = 'You hold ' + (h0.shares || 0) + ' ' + sym + ' — nothing to sell. Buy some first, then sell.';
+        showMsg('sim-msg', m2, false); toast(m2); return;
+      }
+    }
     var stop = null;
     if (side === 'buy') {
       var v = prompt('Stop price (optional — leave blank for none). A stop keeps your risk inside the 2% rule. Current price ' + money(t.price) + ':');
@@ -502,7 +550,7 @@
       await refreshSession(); renderSim(); renderSimDetail();
       showMsg('sim-msg', (side === 'buy' ? 'Bought ' : 'Sold ') + r.qty + ' ' + sym + ' at ' + money(r.price) + ' (SIMULATED PRACTICE). Balance ' + money(r.balance) + '.' + (stop ? ' Stop noted at ' + money(stop) + ' — set it on a Live Desk order to lock it in.' : ''), true);
       logEvent('trade', { desk: 'trade_floor', ticker: sym, side: side, qty: state.simQty, simulated: true });
-    } catch (e) { showMsg('sim-msg', e.message, false); }
+    } catch (e) { showMsg('sim-msg', tradeError(e.message), false); }
   }
 
   // ---------- Live Desk (real prices) ----------
@@ -618,7 +666,7 @@
         (r.filled_price != null ? ' filled at ' + money(r.filled_price) + ' (real price)' : ' — open, waiting on the real price') +
         '. Balance ' + money(r.balance) + '.', true);
       logEvent('trade', { desk: 'live', ticker: sym, side: side, order_type: type, qty: state.liveQty, simulated: false });
-    } catch (e) { showMsg('live-msg', e.message, false); }
+    } catch (e) { showMsg('live-msg', tradeError(e.message), false); }
   }
   function renderSessionOrders() {
     var el = $('orders-list');
@@ -795,12 +843,60 @@
 
   // ---------- auth forms ----------
   var selectedTier = 'Little Legends';
+  var resetToken = null;
+
+  // Post-sign-in recovery-email ask: once only, only when the player
+  // has no email on file and has never been asked (or dismissed) it.
+  // Called only from fresh sign-in / sign-up / session restore — never
+  // from a mid-game refreshSession, so it never pops up mid-level.
+  function maybeShowRecoveryPrompt() {
+    var p = state.profile;
+    if (!p || !state.token) return;
+    if (p.recovery_email_set || p.recovery_prompted) return;
+    openRecoveryModal();
+  }
+  function openRecoveryModal() {
+    hideErr('err-recovery'); $('recovery-ok').textContent = '';
+    var has = !!(state.profile && state.profile.recovery_email_set);
+    $('recovery-modal-title').textContent = has ? 'Change your recovery email' : 'Add a recovery email';
+    $('recovery-modal-sub').textContent = has
+      ? 'Enter a new email to replace the one on file. The new address gets the next reset link.'
+      : 'If you forget your PIN, we can email you a reset link — no need to wait on the owner. For Little Legends, this should be a parent or guardian\u2019s email.';
+    $('recovery-email').value = '';
+    $('recovery-email').placeholder = has ? 'New recovery email' : 'parent or guardian email';
+    $('recovery-modal').classList.add('show');
+  }
+  function closeRecoveryModal() { $('recovery-modal').classList.remove('show'); }
+  function showResetForm() {
+    document.querySelectorAll('#screen-door .tabs').forEach(function (t) { t.classList.add('hidden'); });
+    $('tab-create').setAttribute('aria-pressed', 'false');
+    $('tab-login').setAttribute('aria-pressed', 'false');
+    $('form-create').classList.add('hidden');
+    $('form-login').classList.add('hidden');
+    $('form-reset').classList.remove('hidden');
+  }
+  function showLoginTab() {
+    resetToken = null;
+    try { window.history.replaceState({}, '', window.location.pathname); } catch (e) {}
+    document.querySelectorAll('#screen-door .tabs').forEach(function (t) { t.classList.remove('hidden'); });
+    $('tab-login').setAttribute('aria-pressed', 'true');
+    $('tab-create').setAttribute('aria-pressed', 'false');
+    $('form-login').classList.remove('hidden');
+    $('form-create').classList.add('hidden');
+    $('form-reset').classList.add('hidden');
+  }
   function bindAuth() {
     document.querySelectorAll('#tier-seg button').forEach(function (b) {
       b.addEventListener('click', function () {
         selectedTier = b.dataset.tier;
         document.querySelectorAll('#tier-seg button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
         $('tier-note').textContent = TIER_NOTES[selectedTier];
+        // Little Legends players are 4–7: the recovery email is a
+        // parent or guardian's. Older players get the plain label.
+        var lbl = $('f-email-label');
+        if (lbl) lbl.textContent = selectedTier === 'Little Legends'
+          ? 'Parent or guardian email (optional)'
+          : 'Recovery email (optional)';
       });
     });
     $('tab-create').addEventListener('click', function () {
@@ -814,14 +910,21 @@
     $('form-create').addEventListener('submit', async function (e) {
       e.preventDefault(); hideErr('err-create');
       var name = $('f-name').value.trim(), user = $('f-user').value.trim().toLowerCase(), pin = $('f-pin').value.trim();
+      var email = $('f-email') ? $('f-email').value.trim() : '';
       if (!name) { showErr('err-create', 'Pick a stage name first.'); return; }
       if (!/^[a-z0-9_]{3,20}$/.test(user)) { showErr('err-create', 'Username: 3–20 characters, letters, numbers and _ only.'); return; }
       if (!/^\d{4}$/.test(pin)) { showErr('err-create', 'Your game PIN must be exactly 4 digits.'); return; }
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { showErr('err-create', 'That email does not look right — check it, or leave it blank.'); return; }
       try {
         await Api.createProfile(user, name, pin, selectedTier);
         var s = await Api.loginProfile(user, pin);
         state.token = s.token; localStorage.setItem('wsc_token', s.token);
-        await refreshSession(); goStart();
+        // Recovery email is optional: save it when given. If the save
+        // fails the profile still stands — the post-sign-in ask covers it.
+        if (email) {
+          try { await Api.setRecoveryEmail(s.token, email); } catch (e2) { /* ask covers it */ }
+        }
+        await refreshSession(); goStart(); maybeShowRecoveryPrompt();
         toast('Welcome to the cypher, ' + name + '!');
       } catch (err) { showErr('err-create', err.message); }
     });
@@ -832,9 +935,24 @@
       try {
         var s = await Api.loginProfile(user, pin);
         state.token = s.token; localStorage.setItem('wsc_token', s.token);
-        await refreshSession(); goStart();
+        await refreshSession(); goStart(); maybeShowRecoveryPrompt();
       } catch (err) { showErr('err-login', err.message); }
     });
+    $('form-reset').addEventListener('submit', async function (e) {
+      e.preventDefault(); hideErr('err-reset-pin'); $('reset-pin-ok').textContent = '';
+      var pin = $('x-pin').value.trim(), pin2 = $('x-pin2').value.trim();
+      if (!/^\d{4}$/.test(pin)) { showErr('err-reset-pin', 'Your new game PIN must be exactly 4 digits.'); return; }
+      if (pin !== pin2) { showErr('err-reset-pin', 'The two PINs do not match — type them again.'); return; }
+      if (!resetToken) { showErr('err-reset-pin', 'This reset link is missing its code — ask for a new one.'); return; }
+      try {
+        var r = await Api.resetPinWithToken(resetToken, pin);
+        $('reset-pin-ok').textContent = 'PIN saved for ' + (r.username || 'your profile') + '. Log in with your new PIN — your levels, XP and practice wallet are exactly as they were.';
+        resetToken = null;
+        try { window.history.replaceState({}, '', window.location.pathname); } catch (e2) {}
+        $('x-pin').value = ''; $('x-pin2').value = '';
+      } catch (err) { showErr('err-reset-pin', err.message); }
+    });
+    $('btn-reset-to-login').addEventListener('click', showLoginTab);
   }
 
   // ---------- wire up ----------
@@ -932,6 +1050,36 @@
     $('btn-forgot').addEventListener('click', function () {
       $('recover-panel').classList.toggle('hidden');
     });
+    $('btn-send-reset').addEventListener('click', async function () {
+      hideErr('err-recover'); $('recover-ok').textContent = '';
+      var user = $('r-user').value.trim().toLowerCase();
+      if (!user) { showErr('err-recover', 'Enter your username first.'); return; }
+      try {
+        await Api.requestPinReset(user);
+        // Generic on purpose: the server answers the same way whether
+        // the username exists or has an email — no one can probe for
+        // who plays, or who has an email on file.
+        $('recover-ok').textContent = 'If an email is on file for ' + user + ', a reset link is on its way — it works once and expires in 1 hour. No email on file? Ask the owner to reset your PIN from the Owners Portal.';
+      } catch (e) { showErr('err-recover', e.message); }
+    });
+    $('btn-recovery-save').addEventListener('click', async function () {
+      hideErr('err-recovery'); $('recovery-ok').textContent = '';
+      var email = $('recovery-email').value.trim();
+      if (!email) { showErr('err-recovery', 'Enter an email first — or tap Not now.'); return; }
+      if (!state.token) { showErr('err-recovery', 'Sign in first.'); return; }
+      try {
+        await Api.setRecoveryEmail(state.token, email);
+        if (state.profile) { state.profile.recovery_email_set = true; state.profile.recovery_prompted = true; }
+        $('recovery-ok').textContent = 'Saved. If you forget your PIN, a reset link will go to that email.';
+        setTimeout(closeRecoveryModal, 1200);
+      } catch (e) { showErr('err-recovery', e.message); }
+    });
+    $('btn-recovery-later').addEventListener('click', async function () {
+      try { if (state.token) await Api.dismissRecoveryPrompt(state.token); } catch (e) { /* ask stays local-only this session */ }
+      if (state.profile) state.profile.recovery_prompted = true;
+      closeRecoveryModal();
+    });
+    $('btn-recovery-manage').addEventListener('click', openRecoveryModal);
     $('btn-reset-pin').addEventListener('click', async function () {
       hideErr('err-reset'); $('reset-ok').textContent = '';
       var user = $('reset-user').value.trim().toLowerCase();
@@ -949,6 +1097,12 @@
   // ---------- boot ----------
   async function boot() {
     bind();
+    // ?reset=<token> — a PIN reset link from email. The reset form is
+    // the destination, even for a signed-in player.
+    try {
+      var rt = new URLSearchParams(window.location.search).get('reset');
+      if (rt) resetToken = rt;
+    } catch (e) {}
     try {
       var res = await fetch('data/levels.json', { cache: 'no-store' });
       state.levels = await res.json();
@@ -956,9 +1110,10 @@
         console.warn('levels.json did not load 200 entries:', state.levels && state.levels.length);
       }
     } catch (e) { console.warn('levels.json failed to load:', e.message); }
+    if (resetToken) { showOnly('screen-door'); showResetForm(); return; }
     if (state.token) {
       var ok = await refreshSession();
-      if (ok) { goStart(); return; }
+      if (ok) { goStart(); maybeShowRecoveryPrompt(); return; }
     }
     showOnly('screen-door');
   }

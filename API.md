@@ -60,6 +60,10 @@ PINs and owner access codes are stored **only** as bcrypt hashes
   (case-insensitive — stored lowercased). `pin`: exactly 4 digits.
 - `tier`: `Little Legends` | `Rookie` | `Rookie · Kid Mode` |
   `Teen Trader` | `Adult Trader` (default `Rookie`).
+- Welcome practice funds (Nov 21, 2026): a new profile starts with a
+  $250 `deposit` ledger row — the full Gateway-0 deposit cap — so Level 1
+  is playable immediately. The grant counts toward the lifetime deposit
+  cap; `total_deposited` is 250.00 from the start.
 
 ```json
 // POST {"username":"juice_jr","display_name":"Juice Jr","pin":"1234","tier":"Little Legends"}
@@ -517,3 +521,107 @@ groups `cypher_events.detail.screen` (events without a screen count under
   `getprices()`, so nothing breaks, prices just re-seed.
 - No real-money rails exist or are planned in this backend. Any future
   broker integration is a separate build, not an extension of these RPCs.
+
+## 13. Email recovery — self-serve PIN reset (added Nov 21, 2026)
+
+Rashad: "Account recovery should via email." Players are NOT Supabase
+Auth users (custom username + 4-digit PIN), so Supabase Auth's built-in
+reset email does not apply. Recovery email is **optional at signup**
+(the game promises "no real names, no birthdays" and never asks for an
+email to play) and is stored on the profile only for sending reset
+links — never shared, never used for anything else. The owner-assisted
+reset below stays as the fallback, so nobody is ever locked out.
+
+**Send route:** Resend, called from inside `requestpinreset()` via
+`pg_net` (`net.http_post`) — no Edge Function, no new deploy surface.
+Setup (one-time, before the migration): Resend account → verify
+`wallstcypher.com` as a sending domain (DNS records at Spaceship) →
+create an API key → insert it into `cypher_settings` (key
+`resend_api_key`, plus `resend_from`). If the key is not configured,
+`requestpinreset()` raises "email reset is not set up yet — ask the
+owner to reset your PIN from the Owners Portal" and the player is
+pointed at the owner fallback instead of waiting on an email that
+never comes.
+
+**Tokens:** 32 random bytes, hex-encoded; only the SHA-256 hash is
+stored. Single-use, 1-hour expiry, one active token per player; while
+a live token exists no second email is sent (the player uses the link
+already sent). Reset link: `https://wallstcypher.com/?reset=<token>`. A successful
+token reset deletes ALL of the player's sessions and logs the event
+via `'email'` (vs `'owner'` for the owner reset).
+
+**No enumeration:** `requestpinreset()` returns `{"ok": true}` for an
+unknown username or a profile with no email on file, and writes
+nothing — the frontend shows the same "check your inbox" message
+either way.
+
+### `requestpinreset(username)` → `{ok}` (no auth)
+
+```json
+// POST {"p_username":"juice_jr"}
+{"ok": true}
+```
+
+### `resetpinwithtoken(token, new_pin)` → `{pin_reset, username}` (no auth)
+
+```json
+// POST {"p_token":"…","p_new_pin":"4321"}
+{"pin_reset": true, "username": "juice_jr"}
+```
+Fails on an unknown, expired, or already-used token ("This reset link
+has expired or was already used — ask for a new one").
+
+### `setrecoveryemail(token, email)` → `{recovery_email_set}` (player session)
+
+Called after sign-in (or right after signup, with the fresh session
+token). Also marks the player as prompted, so the post-sign-in ask
+never appears again. Clears `recovery_email` when passed an empty
+string.
+
+```json
+// POST {"p_token":"…","p_email":"parent@example.com"}
+{"recovery_email_set": true}
+```
+
+### `dismissrecoveryprompt(token)` → `{recovery_prompted}` (player session)
+
+Records that the player tapped "Not now" on the post-sign-in ask —
+the ask never appears again for that player (they can still add an
+email any time from the start screen's "📧 Recovery email" button).
+
+```json
+// POST {"p_token":"…"}
+{"ok": true}
+```
+
+### Owner reset — the fallback (built Nov 21, 2026, unchanged)
+
+### `resetplayerpin(owner_token, username, new_pin)` → `{pin_reset, username}`
+
+```json
+// POST {"p_owner_token":"…","p_username":"juice_jr","p_new_pin":"4321"}
+{"pin_reset": true, "username": "juice_jr"}
+```
+Same session-invalidation and event logging as the token reset, with
+`via: 'owner'`. Panel: Owners Portal → "Reset a player's PIN".
+
+### `getsession(token)` — new profile fields (additive, no signature change)
+
+```json
+"profile": {
+  "profile_id": "…", "username": "juice_jr", "display_name": "Juice Jr",
+  "tier": "Little Legends", "created_at": "…",
+  "recovery_email_set": false,
+  "recovery_prompted": false
+}
+```
+The frontend uses these to show the post-sign-in recovery-email ask
+exactly once, only on fresh sign-in / sign-up / session restore —
+never mid-game.
+
+**Applying it:** the delta is
+[`supabase/email-recovery-migration.sql`](supabase/email-recovery-migration.sql)
+— paste it whole into the SQL editor (it is the same code as the
+email-recovery section of `schema.sql`, plus the `getsession` update).
+Run the verification queries at the end of that file (no-enumeration
+check + full loop on a throwaway profile). Then deploy the frontend.

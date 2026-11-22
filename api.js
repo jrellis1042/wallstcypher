@@ -83,6 +83,14 @@
     getOwnerDashboard: (owner_token) => rpc('getownerdashboard', { p_owner_token: owner_token }),
     resetPlayerPin: (owner_token, username, pin) =>
       rpc('resetplayerpin', { p_owner_token: owner_token, p_username: username, p_new_pin: pin }),
+    // Self-serve email recovery (Nov 21, 2026): the player resets their
+    // OWN PIN from the login screen. Owner reset above stays as fallback.
+    requestPinReset: (username) => rpc('requestpinreset', { p_username: username }),
+    resetPinWithToken: (token, pin) =>
+      rpc('resetpinwithtoken', { p_token: token, p_new_pin: pin }),
+    setRecoveryEmail: (token, email) =>
+      rpc('setrecoveryemail', { p_token: token, p_email: email }),
+    dismissRecoveryPrompt: (token) => rpc('dismissrecoveryprompt', { p_token: token }),
     fetchQuotesFile: fetchQuotesFile,
     pushQuotes: pushQuotes
   };

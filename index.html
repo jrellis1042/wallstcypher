@@ -53,6 +53,9 @@
         <input type="text" id="f-user" maxlength="20" placeholder="letters, numbers and _ only" autocomplete="off">
         <label for="f-pin">4-digit game PIN</label>
         <input type="password" id="f-pin" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
+        <label for="f-email" id="f-email-label">Parent or guardian email (optional)</label>
+        <input type="email" id="f-email" maxlength="254" placeholder="For PIN resets only" autocomplete="off">
+        <p class="fineprint">Only used if you forget your PIN — we send a reset link here. We never share it, and the game never asks for anything else.</p>
         <label>Difficulty tier</label>
         <div class="seg" id="tier-seg" style="grid-template-columns:1fr 1fr">
           <button type="button" data-tier="Little Legends" aria-pressed="true">🌟 Little Legends<br><small>Ages 4–7</small></button>
@@ -79,8 +82,27 @@
         <p class="fineprint"><button type="button" class="backlink" id="btn-forgot">Forgot PIN or username?</button></p>
         <div id="recover-panel" class="hidden" style="text-align:left">
           <p class="sub"><b>Forgot your username?</b> Ask the owner — she can find it in the player roster in the Owners Portal.</p>
-          <p class="sub"><b>Forgot your PIN?</b> The owner can reset it for you from the Owners Portal. Tell her your username and your new 4-digit PIN — your levels, XP and practice wallet stay exactly as they are. There is no email reset: the game never asks for an email, so only the owner can change a PIN.</p>
+          <p class="sub"><b>Forgot your PIN?</b> If you added a recovery email, we can email you a reset link.</p>
+          <label for="r-user">Username</label>
+          <input type="text" id="r-user" maxlength="20" autocomplete="off">
+          <button type="button" class="btn dark" id="btn-send-reset" style="margin-top:12px">Email me a reset link →</button>
+          <div class="err" id="err-recover"></div>
+          <p class="small" id="recover-ok"></p>
+          <p class="sub">No recovery email on file? Ask the owner — she can reset your PIN from the Owners Portal. Your levels, XP and practice wallet stay exactly as they are.</p>
         </div>
+      </form>
+
+      <form id="form-reset" novalidate class="hidden">
+        <h2>Set a new PIN</h2>
+        <p class="sub">Your reset link brought you here. Pick a new 4-digit game PIN — your levels, XP and practice wallet stay exactly as they are.</p>
+        <label for="x-pin">New 4-digit game PIN</label>
+        <input type="password" id="x-pin" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
+        <label for="x-pin2">Type it again</label>
+        <input type="password" id="x-pin2" maxlength="4" inputmode="numeric" placeholder="••••" autocomplete="off">
+        <button type="submit" class="btn dark">Save new PIN →</button>
+        <div class="err" id="err-reset-pin"></div>
+        <p class="small" id="reset-pin-ok"></p>
+        <p class="fineprint"><button type="button" class="backlink" id="btn-reset-to-login">Back to log in</button></p>
       </form>
     </div>
   </section>
@@ -102,6 +124,7 @@
       <div class="chips" id="start-chips"></div>
       <p><button type="button" class="btn" id="btn-start-game" style="max-width:420px;font-size:20px;padding:18px 30px">▶ START GAME</button></p>
       <p><button type="button" class="btn ghost" id="btn-change-tier" style="max-width:420px">Change difficulty tier</button></p>
+      <p><button type="button" class="btn ghost" id="btn-recovery-manage" style="max-width:420px">📧 Recovery email</button></p>
       <p class="small">Practice funds only — your wallet holds practice dollars, never real money.</p>
       <p><button type="button" class="backlink" id="btn-signout-start">Sign out</button></p>
     </div>
@@ -354,6 +377,20 @@
 </div>
 
 <div class="toast hidden" id="toast"></div>
+<div class="modal" id="recovery-modal"><div class="box" style="text-align:left">
+  <div class="big-emoji" style="text-align:center">📧</div>
+  <h2 id="recovery-modal-title" style="text-align:center">Add a recovery email</h2>
+  <p id="recovery-modal-sub">If you forget your PIN, we can email you a reset link — no need to wait on the owner. For Little Legends, this should be a parent or guardian's email.</p>
+  <label for="recovery-email">Recovery email</label>
+  <input type="email" id="recovery-email" maxlength="254" placeholder="parent or guardian email" autocomplete="off">
+  <div class="err" id="err-recovery"></div>
+  <p class="small" id="recovery-ok"></p>
+  <div class="row">
+    <button type="button" class="btn ghost" id="btn-recovery-later">Not now</button>
+    <button type="button" class="btn" id="btn-recovery-save">Save email</button>
+  </div>
+  <p class="fineprint" style="text-align:center">We only use this address to send PIN reset links. We never share it.</p>
+</div></div>
 <div class="modal" id="ceremony-modal"><div class="box ceremony">
   <div class="big-emoji">🏆</div>
   <div class="marker spray" style="color:var(--pink);font-size:18px">Gateway 1 · Cleared</div>
