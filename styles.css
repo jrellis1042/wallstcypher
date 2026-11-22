@@ -40,7 +40,7 @@ a{color:inherit}
 .card h2{font-size:22px;margin-bottom:4px}
 .card p.sub{color:var(--muted);margin:0 0 14px;font-size:14px}
 label{display:block;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px}
-input[type=text],select{width:100%;border:2px solid var(--ink);border-radius:12px;padding:11px 12px;background:var(--bg);color:var(--ink)}
+input[type=text],input[type=email],select{width:100%;border:2px solid var(--ink);border-radius:12px;padding:11px 12px;background:var(--bg);color:var(--ink)}
 .avatars{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .avatar-btn{border:2px solid var(--line);background:var(--bg);border-radius:14px;padding:10px 4px;font-weight:800;font-size:13px;min-height:58px}
 .avatar-btn[aria-pressed="true"]{border-color:var(--ink);background:var(--gold);box-shadow:3px 3px 0 var(--ink)}
@@ -284,8 +284,9 @@ footer{max-width:1120px;margin:0 auto;padding:0 20px 34px;color:var(--muted);fon
 .trade-card.sel{background:var(--gold);box-shadow:4px 4px 0 var(--ink)}
 .trade-card h3{font-size:16px}
 .trade-card .big{font-family:"Bungee",sans-serif;font-size:24px}
-select,input[type=text],input[type=password],input[type=number]{width:100%;border:2px solid var(--ink);border-radius:12px;padding:11px 12px;background:var(--bg);color:var(--ink)}
+select,input[type=text],input[type=password],input[type=number],input[type=email]{width:100%;border:2px solid var(--ink);border-radius:12px;padding:11px 12px;background:var(--bg);color:var(--ink)}
 input[type=password]{font:inherit;min-height:44px}
+input[type=email]{font:inherit;min-height:44px}
 .hidden{display:none!important}
 .small{font-size:13px;color:var(--muted)}
 /* ---------- Stock of the Week ---------- */
@@ -313,6 +314,7 @@ input[type=password]{font:inherit;min-height:44px}
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--coal);color:var(--gold);border:2px solid var(--ink);border-radius:999px;padding:10px 18px;font-weight:800;z-index:99;box-shadow:4px 4px 0 var(--ink);max-width:92vw;text-align:center}
 
 /* ---------- Nov 21, 2026 cosmetic sweep — small-screen fixes ---------- */
+/* Nov 22, 2026 additions: wallet-actions stack + #pf-tier shrink (same block). */
 /* Live Desk controls keep their five-across desktop layout. This class
    replaces the inline style that used to sit on the div in index.html —
    an inline style beats every media query, so at phone width the five
@@ -332,6 +334,12 @@ input[type=password]{font:inherit;min-height:44px}
   /* One column: the qty stepper (152px min) overflowed its half-row
      below ~360px viewport, pushing the page wider than the screen. */
   .controls,.controls.live-controls{grid-template-columns:1fr}
+  /* Wallet actions: "Add practice funds" wrapped to three lines in its
+     half-row button; stack the two buttons full-width instead. */
+  .wallet-actions{flex-direction:column}
+  /* Profile tier line ("Rookie · Kid Mode · Level 0 of 200 · 0 XP · 0 ★")
+     wrapped so the stars dropped to a second line; shrink it to fit. */
+  #pf-tier{font-size:13px}
 }
 /* Wallet balance is Bungee at a fixed 42px; a 5-figure balance
    ("$12,345.67") is ~300px and overflows the panel at phone width.
