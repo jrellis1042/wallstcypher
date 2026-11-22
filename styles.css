@@ -105,8 +105,14 @@ input[type=text],select{width:100%;border:2px solid var(--ink);border-radius:12p
 /* Nov 21, 2026 fix: the Live Desk badge ("Locked · Lvl 25") wrapped
    mid-label inside its pill at phone width. Tabs now never wrap their
    own text — the row wraps instead — and the badge is shorter (see
-   renderProfile in app.js: "🔒 Lvl 25"). */
-@media(max-width:520px){.app-tabs button{padding:10px 8px;font-size:14px}}
+   renderProfile in app.js: "🔒 Lvl 25"). Nov 21 cosmetic sweep: the
+   badge then PROTRUDED past the pill instead — three tabs share one row,
+   so each button is only ~113px wide at 390px, but "📈 Live Desk" +
+   badge needs ~180px, and min-width:110px lets the button shrink below
+   its content while white-space:nowrap pushes the badge out. Below 660px
+   the tabs go two-per-row (three-per-row only fits above ~660px
+   viewport); the ≤520px sizing lives in the sweep block at the end. */
+@media(max-width:660px){.app-tabs button{min-width:calc(50% - 4px)}}
 .panel{background:var(--panel);border:2px solid var(--ink);border-radius:18px;padding:20px;box-shadow:6px 6px 0 var(--ink);margin-top:16px}
 .panel h2{font-size:clamp(22px,3.6vw,32px)}
 .panel h3{font-size:17px}
@@ -305,3 +311,33 @@ input[type=password]{font:inherit;min-height:44px}
 .leader-first td{color:#16130E}
 .leader-first td small{color:#5D5546}
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--coal);color:var(--gold);border:2px solid var(--ink);border-radius:999px;padding:10px 18px;font-weight:800;z-index:99;box-shadow:4px 4px 0 var(--ink);max-width:92vw;text-align:center}
+
+/* ---------- Nov 21, 2026 cosmetic sweep — small-screen fixes ---------- */
+/* Live Desk controls keep their five-across desktop layout. This class
+   replaces the inline style that used to sit on the div in index.html —
+   an inline style beats every media query, so at phone width the five
+   controls stayed five-across in ~56px columns and the grid (whose
+   tracks expand to min-content) pushed the page wider than the screen. */
+.controls.live-controls{grid-template-columns:1fr 1fr 1fr 1fr auto}
+@media(max-width:860px){.controls.live-controls{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){
+  .app-tabs button{padding:10px 6px;font-size:13px}
+  .app-tabs button .badge{font-size:10px;padding:2px 6px}
+  /* Door header: the logo wrapped mid-name beside the pill; stack it. */
+  .door-top{flex-wrap:wrap;gap:8px}
+  /* "🎤 Create Profile" wrapped to two lines inside its button. */
+  .tabs button{font-size:15px;padding:10px 6px}
+  /* "🧒 Rookie · Kid Mode" wrapped to two lines inside its button. */
+  .seg button{font-size:12px}
+  /* One column: the qty stepper (152px min) overflowed its half-row
+     below ~360px viewport, pushing the page wider than the screen. */
+  .controls,.controls.live-controls{grid-template-columns:1fr}
+}
+/* Wallet balance is Bungee at a fixed 42px; a 5-figure balance
+   ("$12,345.67") is ~300px and overflows the panel at phone width.
+   Shrink with the viewport instead — desktop stays 42px. */
+.wallet-bal{font-size:clamp(30px,9vw,42px)}
+/* The 5-column holdings table has no scroll wrapper; a big Value
+   ("$12,345.67") could push the page wider than the screen. Scroll
+   inside the table's own box instead. */
+#holdings-table{overflow-x:auto}

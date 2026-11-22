@@ -632,6 +632,9 @@
     $('live-state-badge').textContent = live.feedState === 'live' ? '● LIVE' : live.feedState === 'delayed' ? '◐ DELAYED' : live.feedState === 'market_closed' ? '○ CLOSED' : '✕ UNREACHABLE';
     var grid = $('live-grid'); grid.innerHTML = '';
     var tickers = live.tickers || {};
+    /* Nov 21, 2026 cosmetic sweep: the card footer printed the raw feed
+       state ("market_closed") — same human labels as Stock of the Week. */
+    var stateTxt = live.feedState === 'live' ? 'LIVE' : live.feedState === 'delayed' ? 'DELAYED' : live.feedState === 'market_closed' ? 'LAST CLOSE' : 'FEED DOWN';
     LIVE_TICKERS.forEach(function (sym) {
       var t = tickers[sym];
       var card = document.createElement('button');
@@ -643,7 +646,7 @@
           '<div class="big">' + money(t.price) + '</div>' +
           '<div class="' + (t.changePct >= 0 ? 'up-t' : 'down-t') + '" style="font-weight:800">' + pct(t.changePct) + '</div>' +
           '<canvas class="spark" width="220" height="44"></canvas>' +
-          '<div class="small">REAL PRICE · ' + esc(live.feedState || '') + '</div>';
+          '<div class="small">REAL PRICE · ' + stateTxt + '</div>';
         card.addEventListener('click', function () { state.liveTicker = sym; renderLive(live); renderLiveDetail(); });
         grid.appendChild(card);
         drawSpark(card.querySelector('canvas'), t.candles);
