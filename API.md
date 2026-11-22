@@ -317,8 +317,14 @@ Derived server-side from the New York clock and the age of the cached
 |---|---|
 | `live` | Market open (Mon–Fri 09:30–16:00 ET) and `asOf` ≤ 15 min old |
 | `delayed` | Market open and `asOf` 15–30 min old |
-| `market_closed` | Outside market hours (weekend / before 09:30 / after 16:00 ET) — prices shown are the last close |
-| `feed_unreachable` | No cache at all, or market open and `asOf` > 30 min old |
+| `market_closed` | Outside market hours (weekend / before 09:30 / after 16:00 ET) — prices shown are the last close, but only when the cached `asOf` is at least as fresh as that last close |
+| `feed_unreachable` | No cache at all, or market open and `asOf` > 30 min old, or (any time, including weekends) `asOf` older than the most recent weekday 16:00 ET close |
+
+The last-close guard (Nov 21, 2026) exists because weekends used to
+return `market_closed` without ever checking cache age, so days-old
+prices posed as "the last close" — the live cache once held fake
+round-number values for days while the site showed them as real. A
+cache older than the last close now reports `feed_unreachable` instead.
 
 The UI must show the state and the as-of time next to Live Desk prices,
 and `feed_unreachable` must pause Live Desk trading (the server already
@@ -327,7 +333,10 @@ rejects market orders with no cache).
 ### `cypher_cache_quotes(payload)` → cache status (no auth)
 
 The frontend fetches `data/quotes.json` same-origin and POSTs its
-contents here to refresh the server cache. Payload shape is exactly the
+contents here to refresh the server cache. The push runs on every
+Trade Floor visit (`renderStockOfWeek()` → `refreshLiveCache()`) and
+on Live Desk load (`loadLive()`), not only behind the level-25 gate —
+that gate was why the cache once went days stale. Payload shape is exactly the
 `data/quotes.json` shape (see §8).
 
 ```json
@@ -492,7 +501,7 @@ groups `cypher_events.detail.screen` (events without a screen count under
 | Limit/stop/take-profit fills | `_cypher_evaluate_fills()` (lazy, on `getliveprices` / `placeorder` / `cypher_cache_quotes`) |
 | Discipline score, Trader Ready, skills | Computed from ledger/orders/progress in the RPCs |
 | Auth (sessions, PINs, owner code) | `loginprofile()` / `loginowner()` + `_cypher_auth()` |
-| **Real prices** | **NOT computed server-side.** Yahoo → Action → `data/quotes.json` (same-origin file) → frontend → `cypher_cache_quotes()` → `cypher_quotes_cache`. The server only validates the payload (freshness + 20% band) and derives `feedState`. If the Action stops, the cache goes stale and `feedState` degrades to `feed_unreachable` — trading does not silently continue on old prices. |
+| **Real prices** | **NOT computed server-side.** Yahoo → Action → `data/quotes.json` (same-origin file) → frontend → `cypher_cache_quotes()` → `cypher_quotes_cache`. The server only validates the payload (freshness + 20% band) and derives `feedState`. The frontend pushes the fresh file on every Trade Floor visit (`renderStockOfWeek()` → `refreshLiveCache()`) and on Live Desk load, so the cache refreshes without a level-25 player. If the Action stops, the cache goes stale and `feedState` degrades to `feed_unreachable` — including outside market hours, since a cache older than the most recent weekday 16:00 ET close reports `feed_unreachable` instead of posing as the last close — and trading does not silently continue on old prices. |
 | **Simulated prices** | Computed **server-side** in `getprices()` / `_cypher_sim_price()` — the client never invents a price. `papertrade()` re-computes and tolerance-checks it. |
 | Order entry price | Server-side, from the quotes cache (`placeorder` takes no price argument). The client's copy of the price is display-only. |
 

@@ -320,6 +320,14 @@
     state.levelTraded = false;
     showOnly('screen-level');
     logEvent('screen_view', { screen: 'level', level: n });
+    // Render the panel from the session we already have BEFORE the price
+    // fetch (Nov 21, 2026 fix): the tiles default to $0/0/$0 in the HTML
+    // and only got real values after loadSim() resolved, so a fresh
+    // player saw "PRACTICE WALLET $0" on first render even though the
+    // wallet held the $250 welcome grant. updateLevelPanel() is safe to
+    // call early — cash/shares/value come from session state, only the
+    // price waits on the fetch — and it runs again below once prices land.
+    updateLevelPanel();
     await loadSim();
     updateLevelPanel();
     var t = state.sim && state.sim.tickers && state.sim.tickers[lv.ticker];
@@ -475,6 +483,11 @@
     var info = STOCK_OF_WEEK[pick.ticker] || {};
     var weekStr = pick.weekOf.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
     var priceHtml = '<p class="small">Real price unavailable right now — no price is shown rather than a fake one. The story below is still this week\u2019s pick.</p>';
+    // Refresh the server cache from the fresh quotes file first (Nov 21,
+    // 2026 fix): this push used to happen only on the Live Desk, behind
+    // level 25, so the cache went stale and this price froze. Best
+    // effort — getLivePrices below is the authority.
+    await refreshLiveCache();
     try {
       var live = await Api.getLivePrices();
       var t = live && live.tickers && live.tickers[pick.ticker];
@@ -553,6 +566,24 @@
     } catch (e) { showMsg('sim-msg', tradeError(e.message), false); }
   }
 
+  // Push the fresh quotes file into the server cache (best effort).
+  // Extracted from loadLive() (Nov 21, 2026 fix): the push used to run
+  // only on the Live Desk, behind level 25, so with no level-25 player
+  // the cache never refreshed and the Stock of the Week price froze on
+  // stale data. renderStockOfWeek() calls this on every Trade Floor
+  // visit now, so any player refreshes the cache. The RPC rejects stale
+  // payloads (asOf must be newer) and wild moves (20% band), so
+  // repeated pushes are harmless no-ops; getliveprices is the authority.
+  async function refreshLiveCache() {
+    try {
+      var q = await Api.fetchQuotesFile();
+      state.quotesFile = q;
+      try { await Api.pushQuotes(q); } catch (e) { /* server may already be fresher; getliveprices below is the authority */ }
+    } catch (e) {
+      state.quotesFile = null;
+    }
+  }
+
   // ---------- Live Desk (real prices) ----------
   async function loadLive() {
     var locked = !state.progress || state.progress.level < 25;
@@ -567,13 +598,7 @@
     }
     $('live-state-badge').textContent = '● Loading real prices…';
     // 1) quotes.json same-origin -> push to server cache (best effort)
-    try {
-      var q = await Api.fetchQuotesFile();
-      state.quotesFile = q;
-      try { await Api.pushQuotes(q); } catch (e) { /* server may already be fresher; getliveprices below is the authority */ }
-    } catch (e) {
-      state.quotesFile = null;
-    }
+    await refreshLiveCache();
     // 2) server feed state is the authority
     try {
       var live = await Api.getLivePrices();

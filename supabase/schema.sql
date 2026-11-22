@@ -511,6 +511,11 @@ $$;
 -- Honest feed state for the real quotes cache, from the NY clock and the
 -- age of the cached asOf. (The Action refreshes every 10 min in market
 -- hours, so a fresh cache in market hours is 'live'.)
+-- Nov 21, 2026 fix: a cache older than the most recent weekday 16:00 ET
+-- market close is 'feed_unreachable' even outside market hours. Before
+-- this, weekends returned 'market_closed' without ever checking cache
+-- age, so days-old prices posed as "the last close" (the cache once held
+-- fake round-number values for days while the site showed them as real).
 create or replace function public._cypher_feed_state()
 returns text language plpgsql security definer set search_path = public as $$
 declare
@@ -520,6 +525,8 @@ declare
   v_t      time;
   v_open   boolean;
   v_age_min numeric;
+  v_close_day date;
+  v_last_close timestamptz;
 begin
   select nullif(payload ->> 'asOf', '')::timestamptz into v_asof
     from public.cypher_quotes_cache where id = 1;
@@ -527,6 +534,16 @@ begin
   v_ny  := now() at time zone 'America/New_York';
   v_dow := extract(isodow from v_ny);
   v_t   := v_ny::time;
+  -- Most recent weekday 16:00 ET market close, as a true instant.
+  -- Today counts only once its close has passed; weekends step back
+  -- to Friday. A cache older than this is stale beyond the last close.
+  v_close_day := v_ny::date;
+  if v_t < time '16:00' then v_close_day := v_close_day - 1; end if;
+  while extract(isodow from v_close_day) in (6, 7) loop
+    v_close_day := v_close_day - 1;
+  end loop;
+  v_last_close := (v_close_day::timestamp + time '16:00') at time zone 'America/New_York';
+  if v_asof < v_last_close then return 'feed_unreachable'; end if;
   v_open := v_dow between 1 and 5 and v_t >= time '09:30' and v_t < time '16:00';
   if not v_open then return 'market_closed'; end if;
   v_age_min := extract(epoch from (now() - v_asof)) / 60.0;
